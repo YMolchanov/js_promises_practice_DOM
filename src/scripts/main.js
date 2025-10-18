@@ -7,8 +7,6 @@ function showNotification(message, isError = false) {
   div.className = isError ? 'error' : 'success';
   div.textContent = message;
   document.body.appendChild(div);
-
-  // Автоматично прибираємо через 3 секунди
   setTimeout(() => div.remove(), 3000);
 }
 
@@ -16,69 +14,88 @@ function showNotification(message, isError = false) {
 const firstPromise = new Promise((resolve, reject) => {
   let clicked = false;
 
-  // Ліва кнопка миші
-  document.addEventListener('click', (e) => {
+  function onLeftClick(e) {
     if (e.button === 0 && !clicked) {
-      // 0 = left click
       clicked = true;
-      resolve('First promise was resolved on a left click in the document');
+      document.removeEventListener('click', onLeftClick);
+      resolve('First promise was resolved');
     }
-  });
+  }
 
-  // Якщо не клікнули протягом 3 секунд → reject з Error
+  document.addEventListener('click', onLeftClick);
+
   setTimeout(() => {
     if (!clicked) {
-      reject(
-        new Error('First promise was rejected in 3 seconds if not clicked'),
-      );
+      document.removeEventListener('click', onLeftClick);
+      reject(new Error('First promise was rejected'));
     }
   }, 3000);
 });
 
 firstPromise
   .then((msg) => showNotification(msg))
-  .catch((err) => showNotification(err.message || String(err), true));
+  .catch((err) => showNotification(err.message, true));
 
 // ---------------- SECOND PROMISE ----------------
 const secondPromise = new Promise((resolve) => {
-  document.addEventListener('click', (e) => {
-    if (e.button === 0 || e.button === 2) {
-      // left or right click
+  let resolved = false;
+
+  function onClick(e) {
+    if ((e.button === 0 || e.button === 2) && !resolved) {
+      resolved = true;
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('contextmenu', onRightClick);
       resolve('Second promise was resolved');
     }
-  });
+  }
+
+  function onRightClick(e) {
+    e.preventDefault();
+
+    if (!resolved) {
+      resolved = true;
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('contextmenu', onRightClick);
+      resolve('Second promise was resolved');
+    }
+  }
+
+  document.addEventListener('click', onClick);
+  document.addEventListener('contextmenu', onRightClick);
 });
 
-secondPromise
-  .then((msg) => showNotification(msg))
-  .catch((err) => showNotification(err.message || String(err), true));
-// ніколи не відхиляється, але на всяк випадок
+secondPromise.then((msg) => showNotification(msg));
 
 // ---------------- THIRD PROMISE ----------------
 const thirdPromise = new Promise((resolve) => {
   let leftClicked = false;
   let rightClicked = false;
+  let resolved = false;
 
-  document.addEventListener('click', (e) => {
+  function onLeftClick(e) {
     if (e.button === 0) {
       leftClicked = true;
     }
+    checkResolution();
+  }
 
-    if (e.button === 2) {
-      rightClicked = true;
-    }
+  function onRightClick(e) {
+    e.preventDefault();
+    rightClicked = true;
+    checkResolution();
+  }
 
-    if (leftClicked && rightClicked) {
-      resolve(
-        '3rd promise was resolved only after both left & right clicks happened',
-      );
+  function checkResolution() {
+    if (leftClicked && rightClicked && !resolved) {
+      resolved = true;
+      document.removeEventListener('click', onLeftClick);
+      document.removeEventListener('contextmenu', onRightClick);
+      resolve('Third promise was resolved');
     }
-  });
+  }
+
+  document.addEventListener('click', onLeftClick);
+  document.addEventListener('contextmenu', onRightClick);
 });
 
-thirdPromise
-  .then((msg) => showNotification(msg))
-  .catch((err) => showNotification(err.message || String(err), true));
-
-// Щоб працювало праве натискання без контекстного меню
-document.addEventListener('contextmenu', (e) => e.preventDefault());
+thirdPromise.then((msg) => showNotification(msg));
