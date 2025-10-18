@@ -34,17 +34,16 @@ const firstPromise = new Promise((resolve, reject) => {
 
 firstPromise
   .then((msg) => showNotification(msg))
-  .catch((err) => showNotification(err.message, true));
+  .catch((err) => showNotification(err.message || err, true));
 
 // ---------------- SECOND PROMISE ----------------
 const secondPromise = new Promise((resolve) => {
   let resolved = false;
 
-  function onClick(e) {
-    if ((e.button === 0 || e.button === 2) && !resolved) {
+  function onLeftClick(e) {
+    if (e.button === 0 && !resolved) {
       resolved = true;
-      document.removeEventListener('click', onClick);
-      document.removeEventListener('contextmenu', onRightClick);
+      cleanup();
       resolve('Second promise was resolved');
     }
   }
@@ -54,17 +53,23 @@ const secondPromise = new Promise((resolve) => {
 
     if (!resolved) {
       resolved = true;
-      document.removeEventListener('click', onClick);
-      document.removeEventListener('contextmenu', onRightClick);
+      cleanup();
       resolve('Second promise was resolved');
     }
   }
 
-  document.addEventListener('click', onClick);
+  function cleanup() {
+    document.removeEventListener('click', onLeftClick);
+    document.removeEventListener('contextmenu', onRightClick);
+  }
+
+  document.addEventListener('click', onLeftClick);
   document.addEventListener('contextmenu', onRightClick);
 });
 
-secondPromise.then((msg) => showNotification(msg));
+secondPromise
+  .then((msg) => showNotification(msg))
+  .catch((err) => showNotification(err.message || err, true));
 
 // ---------------- THIRD PROMISE ----------------
 const thirdPromise = new Promise((resolve) => {
@@ -88,14 +93,20 @@ const thirdPromise = new Promise((resolve) => {
   function checkResolution() {
     if (leftClicked && rightClicked && !resolved) {
       resolved = true;
-      document.removeEventListener('click', onLeftClick);
-      document.removeEventListener('contextmenu', onRightClick);
+      cleanup();
       resolve('Third promise was resolved');
     }
+  }
+
+  function cleanup() {
+    document.removeEventListener('click', onLeftClick);
+    document.removeEventListener('contextmenu', onRightClick);
   }
 
   document.addEventListener('click', onLeftClick);
   document.addEventListener('contextmenu', onRightClick);
 });
 
-thirdPromise.then((msg) => showNotification(msg));
+thirdPromise
+  .then((msg) => showNotification(msg))
+  .catch((err) => showNotification(err.message || err, true));
