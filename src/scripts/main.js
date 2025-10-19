@@ -7,28 +7,40 @@ function showNotification(message, isError = false) {
   div.className = isError ? 'error' : 'success';
   div.textContent = message;
   document.body.appendChild(div);
-  setTimeout(() => div.remove(), 3000);
+
+  // Гарантуємо рендер перед видаленням
+  requestAnimationFrame(() => {
+    setTimeout(() => div.remove(), 3000);
+  });
 }
 
 // ---------------- FIRST PROMISE ----------------
 const firstPromise = new Promise((resolve, reject) => {
-  let clicked = false;
+  let settled = false;
 
-  function onLeftClick(e) {
-    if (e.button === 0 && !clicked) {
-      clicked = true;
-      document.removeEventListener('click', onLeftClick);
-      resolve('First promise was resolved');
-    }
+  function cleanup() {
+    document.body.removeEventListener('click', onClick);
+    clearTimeout(timeoutId);
   }
 
-  document.addEventListener('click', onLeftClick);
-
-  setTimeout(() => {
-    if (!clicked) {
-      document.removeEventListener('click', onLeftClick);
-      reject(new Error('First promise was rejected'));
+  function onClick() {
+    if (settled) {
+      return;
     }
+    settled = true;
+    cleanup();
+    resolve('First promise was resolved');
+  }
+
+  document.body.addEventListener('click', onClick);
+
+  const timeoutId = setTimeout(() => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    cleanup();
+    reject(new Error('First promise was rejected'));
   }, 3000);
 });
 
@@ -40,31 +52,33 @@ firstPromise
 const secondPromise = new Promise((resolve) => {
   let resolved = false;
 
-  function onLeftClick(e) {
-    if (e.button === 0 && !resolved) {
-      resolved = true;
-      cleanup();
-      resolve('Second promise was resolved');
-    }
+  function cleanup() {
+    document.body.removeEventListener('click', onClick);
+    document.body.removeEventListener('contextmenu', onContext);
   }
 
-  function onRightClick(e) {
+  function onClick() {
+    if (resolved) {
+      return;
+    }
+    resolved = true;
+    cleanup();
+    resolve('Second promise was resolved');
+  }
+
+  function onContext(e) {
     e.preventDefault();
 
-    if (!resolved) {
-      resolved = true;
-      cleanup();
-      resolve('Second promise was resolved');
+    if (resolved) {
+      return;
     }
+    resolved = true;
+    cleanup();
+    resolve('Second promise was resolved');
   }
 
-  function cleanup() {
-    document.removeEventListener('click', onLeftClick);
-    document.removeEventListener('contextmenu', onRightClick);
-  }
-
-  document.addEventListener('click', onLeftClick);
-  document.addEventListener('contextmenu', onRightClick);
+  document.body.addEventListener('click', onClick);
+  document.body.addEventListener('contextmenu', onContext);
 });
 
 secondPromise
@@ -77,14 +91,17 @@ const thirdPromise = new Promise((resolve) => {
   let rightClicked = false;
   let resolved = false;
 
-  function onLeftClick(e) {
-    if (e.button === 0) {
-      leftClicked = true;
-    }
+  function cleanup() {
+    document.body.removeEventListener('click', onClick);
+    document.body.removeEventListener('contextmenu', onContext);
+  }
+
+  function onClick() {
+    leftClicked = true;
     checkResolution();
   }
 
-  function onRightClick(e) {
+  function onContext(e) {
     e.preventDefault();
     rightClicked = true;
     checkResolution();
@@ -98,13 +115,8 @@ const thirdPromise = new Promise((resolve) => {
     }
   }
 
-  function cleanup() {
-    document.removeEventListener('click', onLeftClick);
-    document.removeEventListener('contextmenu', onRightClick);
-  }
-
-  document.addEventListener('click', onLeftClick);
-  document.addEventListener('contextmenu', onRightClick);
+  document.body.addEventListener('click', onClick);
+  document.body.addEventListener('contextmenu', onContext);
 });
 
 thirdPromise
